@@ -434,11 +434,15 @@ def process(cmd, ua, url, cookie = None, page = None, proxy = None):
 
     urls = site.streams[stream_id]['src']
 
-    i = 0
-    for item in urls:
-        i += 1
-        titles.append(site.title + '_%02d' % i)
-        files.append(site.title + ('_%02d.' + stream_id) % i)
+    if len(urls) == 1:
+        titles.append(site.title)
+        files.append(site.title + '.' + stream_id)
+    else:
+        i = 0
+        for item in urls:
+            i += 1
+            titles.append(site.title + '_%02d' % i)
+            files.append(site.title + ('_%02d.' + stream_id) % i)
 
     return {"err":0, "title":site.title, "urls":urls, "titles":titles, "files":files}
     
@@ -450,4 +454,4 @@ if __name__ == '__main__':
     # site.extract(stream_id = 'mp4')
     # print(site.streams)
 
-    print(process("stream_id=mp4", None, 'http://v.youku.com/v_show/id_XMTY1NjgxMDYxNg==.html'))
+    print(process("stream_id=mp4", None, 'http://v.youku.com/v_show/id_XNjkzMzcwODA4.html?f=20277491&ev=24'))
