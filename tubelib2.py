@@ -1622,6 +1622,7 @@ def safe_filename(text, max_length=200):
 def process(cmd, ua, url, cookie, page, proxy):
     if 'youtube' not in url:
         return None
+
     headers = { 'User-Agent' : 'Mozilla/5.0 (Linux; U; Android 2.3.3; de-ch; HTC Desire Build/FRF91) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1'}
     if ua:
         headers['User-Agent'] = ua
