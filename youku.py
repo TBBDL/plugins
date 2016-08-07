@@ -212,8 +212,8 @@ class Youku(object):
 
     def prepare(self, **kwargs):
         # Hot-plug cookie handler
-        ssl_context = request.HTTPSHandler(
-            context=ssl.SSLContext(ssl.PROTOCOL_TLSv1))
+        #ssl_context = request.HTTPSHandler(
+        #    context=ssl.SSLContext(ssl.PROTOCOL_TLSv1))
         cookie_handler = request.HTTPCookieProcessor()
         if 'extractor_proxy' in kwargs and kwargs['extractor_proxy']:
             proxy = parse_host(kwargs['extractor_proxy'])
@@ -223,7 +223,8 @@ class Youku(object):
             })
         else:
             proxy_handler = request.ProxyHandler({})
-        opener = request.build_opener(ssl_context, cookie_handler, proxy_handler)
+        #opener = request.build_opener(ssl_context, cookie_handler, proxy_handler)
+        opener = request.build_opener(cookie_handler, proxy_handler)
         opener.addheaders = [('Cookie','__ysuid={}'.format(time.time()))]
         request.install_opener(opener)
 
@@ -430,7 +431,7 @@ def process(cmd, ua, url, cookie = None, page = None, proxy = None):
     site.extract(stream_id=stream_id)
     
     if not stream_id:
-        stream_id = self.streams_sorted[0]['id']
+        stream_id = site.streams_sorted[0]['id']
 
     urls = site.streams[stream_id]['src']
 
