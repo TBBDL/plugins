@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+#-*-coding:utf-8-*-
+#tubook:ver:2
 from __future__ import unicode_literals
 __version__ = "0.3.74"
 __author__ = "np1"
@@ -13,7 +14,6 @@ import logging,urllib2
 import hashlib
 import tempfile
 from xml.etree import ElementTree
-
 
 early_py_version = sys.version_info[:2] < (2, 7)
 
@@ -31,11 +31,10 @@ else:
     uni, pyver = unicode, 2
 
 
-if os.environ.get("pafydebug") == "1":
+if os.environ.get("tbd") == "1":
     logging.basicConfig(level=logging.DEBUG)
 
 dbg = logging.debug
-
 
 def parseqs(data):
     """ parse_qs, return unicode. """
@@ -60,6 +59,7 @@ def parseqs(data):
 
 def fetch_decode(url, encoding=None):
     """ Fetch url and decode. """
+    dbg("fetch_decode:"+url)
     try:
         req = g.opener.open(url)
     except HTTPError as e:
@@ -332,10 +332,13 @@ def _get_mainfunc_from_js(js):
     """ Return main signature decryption function from javascript as dict. """
     dbg("Scanning js for main function.")
     m = re.search(r'\w\.sig\|\|([$\w]+)\(\w+\.\w+\)', js)
-    funcname = m.group(1)
-    dbg("Found main function: %s", funcname)
-    function = _extract_function_from_js(funcname, js)
-    return function
+    if m>0:
+        funcname = m.group(1)
+        dbg("Found main function: %s", funcname)
+        function = _extract_function_from_js(funcname, js)
+        return function
+    else:
+        return {"body":""}
 
 
 def _get_other_funcs(primary_func, js):
@@ -645,6 +648,7 @@ def prune_files(path, prefix="", age_max=3600 * 24 * 14, count_max=4):
 
 
 def get_js_sm(video_id):
+    dbg("get_js_sm:", video_id )
     """ Fetch watchinfo page and extract stream map and js funcs if not known.
 
     This function is needed by videos with encrypted signatures.
@@ -662,11 +666,12 @@ def get_js_sm(video_id):
     m = re.search(g.jsplayer, watchinfo)
     myjson = json.loads(m.group(1))
     stream_info = myjson['args']
-    dash_url = stream_info['dashmpd']
+    dash_url = stream_info.has_key('dashmpd') and stream_info['dashmpd'] or 'unknown'
     sm = _extract_smap(g.UEFSM, stream_info, False)
     asm = _extract_smap(g.AF, stream_info, False)
     js_url = myjson['assets']['js']
-    js_url = "https:" + js_url if js_url.startswith("//") else js_url
+    js_url = "http:" + js_url if js_url.startswith("//") else js_url
+    js_url = "http://www.youtube.com" + js_url if not js_url.startswith("http") else js_url
     funcs = Pafy.funcmap.get(js_url)
 
     if not funcs:
@@ -686,6 +691,7 @@ def get_js_sm(video_id):
 
 
 def _make_url(raw, sig, quick=True):
+    dbg("_make_url:", raw)
     """ Return usable url. Set quick=False to disable ratebypass override. """
     if quick and "ratebypass=" not in raw:
         raw += "&ratebypass=yes"
@@ -1076,11 +1082,13 @@ class Pafy(object):
                 Pafy.funcmap[js_url] = funcs
                 self.sm, self.asm = smaps
                 self.js_url = js_url
-                dashsig = re.search(r"/s/([\w\.]+)", dashurl).group(1)
-                dbg("decrypting dash sig")
-                goodsig = _decodesig(dashsig, js_url)
-                self._dashurl = re.sub(r"/s/[\w\.]+",
-                                       "/signature/%s" % goodsig, dashurl)
+                xx = re.search(r"/s/([\w\.]+)", dashurl)
+                if xx:
+                    dashsig = xx.group(1)
+                    dbg("decrypting dash sig")
+                    goodsig = _decodesig(dashsig, js_url)
+                    self._dashurl = re.sub(r"/s/[\w\.]+",
+                                           "/signature/%s" % goodsig, dashurl)
 
             else:
                 s = re.search(r"/s/([\w\.]+)", self._dashurl).group(1)
@@ -1095,6 +1103,7 @@ class Pafy(object):
         self.expiry = time.time() + g.lifespan
 
     def _fetch_basic(self, info_url=None):
+        dbg("_fetch_basic:", info_url)
         """ Fetch info url page and set member vars. """
         allinfo = get_video_info(self.videoid, newurl=info_url)
 
@@ -1591,8 +1600,6 @@ def set_api_key(key):
     g.api_key = key
 
 ##############################################
-import re
-
 def safe_filename(text, max_length=200):
     """
     Sanitizes filenames for many operating systems.
@@ -1620,6 +1627,7 @@ def safe_filename(text, max_length=200):
     return truncate(filename)
 
 def process(cmd, ua, url, cookie, page, proxy):
+    print (cmd, ua, url, cookie, page, proxy)
     if 'youtube' not in url:
         return None
 
@@ -1643,15 +1651,23 @@ def process(cmd, ua, url, cookie, page, proxy):
 
     _video_title = safe_filename(_title)
     video_title = safe_filename(_title).replace('(','').replace(')','').replace('[','').replace(']','').replace('{','').replace('}','').replace('|','').replace(':','').replace(' ','_').replace(',','').replace('%','').replace('@','').replace('~','').replace('#','').replace('&','').replace('*','').replace('+','').replace('=','').replace('\\','').replace('"','').replace("'",'').replace("!",'').replace("?",'').replace(";",'')
-    streams = video.streams
-    for s in streams:
-        urls.append(s.url)
-        xx = "%s%s(%s)" % (s.resolution,"", s.extension)
-        titles.append(xx)
-        file = "%s.%s" % (video_title, s.extension)
-        files.append(file)
+    try:
+        streams = video.streams
+        for s in streams:
+            urls.append(s.url)
+            xx = "%s%s(%s)" % (s.resolution,"", s.extension)
+            titles.append(xx)
+            file = "%s.%s" % (video_title, s.extension)
+            files.append(file)
+    except:
+        urls = []
+        titles = ["This media could not be downloaded"]
+        files = [""]
 
     return {"err":0, "title":_video_title, "urls":urls, "titles":titles, "files":files}
 
 if __name__ == '__main__':
-    print process('parse','','https://m.youtube.com/watch?v=w1lu2KPZH4o','','','')
+    import sys
+    print process('parse','',sys.argv[1],'','','')
+
+#tubook:ver:2
